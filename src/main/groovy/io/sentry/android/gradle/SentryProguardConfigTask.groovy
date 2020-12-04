@@ -1,13 +1,12 @@
 package io.sentry.android.gradle
 
+import com.android.build.gradle.api.BaseVariant
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 
-import com.android.build.gradle.api.ApplicationVariant
-
 class SentryProguardConfigTask extends DefaultTask {
 
-    ApplicationVariant applicationVariant
+    BaseVariant applicationVariant
 
     SentryProguardConfigTask() {
         super()

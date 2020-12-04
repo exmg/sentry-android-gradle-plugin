@@ -19,4 +19,6 @@ class SentryPluginExtension {
      * Default is disabled.
      */
     def boolean includeNativeSources = false;
+
+    def String debugMetaPropFilename = 'sentry-debug-meta.properties'
 }

@@ -2,7 +2,7 @@ package io.sentry.android.gradle
 
 import com.android.build.gradle.AppPlugin
 import com.android.build.gradle.LibraryPlugin
-import com.android.build.gradle.api.ApplicationVariant
+import com.android.build.gradle.api.BaseVariant
 import org.apache.commons.compress.utils.IOUtils
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Plugin
@@ -133,7 +133,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant the given variant
      * @return the task or null otherwise
      */
-    static Task getTransformerTask(Project project, ApplicationVariant variant) {
+    static Task getTransformerTask(Project project, BaseVariant variant) {
         def names = [
                 // Android Studio 3.3 includes the R8 shrinker.
                 "transformClassesAndResourcesWithR8For${variant.name.capitalize()}",
@@ -152,7 +152,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant
      * @return
      */
-    static Task getDexTask(Project project, ApplicationVariant variant) {
+    static Task getDexTask(Project project, BaseVariant variant) {
         def names = [
                 "transformClassesWithDexFor${variant.name.capitalize()}",
                 "transformClassesWithDexBuilderFor${variant.name.capitalize()}",
@@ -169,7 +169,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant
      * @return
      */
-    static Task getPreBundleTask(Project project, ApplicationVariant variant) {
+    static Task getPreBundleTask(Project project, BaseVariant variant) {
         return project.tasks.findByName("build${variant.name.capitalize()}PreBundle")
     }
 
@@ -180,7 +180,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant
      * @return
      */
-    static Task getBundleTask(Project project, ApplicationVariant variant) {
+    static Task getBundleTask(Project project, BaseVariant variant) {
         return project.tasks.findByName("bundle${variant.name.capitalize()}")
     }
 
@@ -191,27 +191,27 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant
      * @return
      */
-    static String getDebugMetaPropPath(Project project, ApplicationVariant variant) {
+    static String getDebugMetaPropPath(Project project, BaseVariant variant, String filename = "sentry-debug-meta.properties") {
         try {
-            return variant.mergeAssetsProvider.get().outputDir.get().file("sentry-debug-meta.properties").getAsFile().path
+            return variant.mergeAssetsProvider.get().outputDir.get().file(filename).getAsFile().path
         } catch (Exception ignored) {
             project.logger.error("getDebugMetaPropPath 1: ${ignored.getMessage()}")
         }
 
         try {
-            return variant.mergeAssets.outputDir.get().file("sentry-debug-meta.properties").getAsFile().path
+            return variant.mergeAssets.outputDir.get().file(filename).getAsFile().path
         } catch (Exception ignored) {
             project.logger.error("getDebugMetaPropPath 2: ${ignored.getMessage()}")
         }
 
         try {
-            return "${variant.mergeAssets.outputDir.get().asFile.path}/sentry-debug-meta.properties"
+            return "${variant.mergeAssets.outputDir.get().asFile.path}/${filename}"
         } catch (Exception ignored) {
             project.logger.error("getDebugMetaPropPath 3: ${ignored.getMessage()}")
         }
 
         try {
-            return "${variant.mergeAssets.outputDir}/sentry-debug-meta.properties"
+            return "${variant.mergeAssets.outputDir}/${filename}"
         } catch (Exception ignored) {
             project.logger.error("getDebugMetaPropPath 4: ${ignored.getMessage()}")
         }
@@ -225,7 +225,11 @@ class SentryPlugin implements Plugin<Project> {
                 throw new IllegalStateException('Must apply \'com.android.application\' first!')
             }
 
-            project.android.applicationVariants.all { ApplicationVariant variant ->
+            def variants = project.plugins.hasPlugin(AppPlugin) ?
+                    project.android.applicationVariants :
+                    project.android.libraryVariants;
+
+            variants.all { BaseVariant variant ->
                 variant.outputs.each { variantOutput ->
 
                     def mappingFile = getMappingFile(variant, project)
@@ -290,7 +294,7 @@ class SentryPlugin implements Plugin<Project> {
                             project.logger.info("propsFile is null")
                         }
 
-                        def debugMetaPropPath = getDebugMetaPropPath(project, variant)
+                        def debugMetaPropPath = getDebugMetaPropPath(project, variant, extension.debugMetaPropFilename)
                         project.logger.info("debugMetaPropPath: ${debugMetaPropPath}")
 
                         def args = [
@@ -447,7 +451,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant the given variant
      * @return the task if found or null otherwise
      */
-    static Task findAssembleTask(ApplicationVariant variant, Project project) {
+    static Task findAssembleTask(BaseVariant variant, Project project) {
         try {
             return variant.assembleProvider.get()
         } catch (Exception ignored) {
@@ -462,7 +466,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant the given variant
      * @return the GString if found or null otherwise
      */
-    static GString getPropsString(Project project, ApplicationVariant variant) {
+    static GString getPropsString(Project project, BaseVariant variant) {
         def buildTypeName = variant.buildType.name
         def flavorName = variant.flavorName
         // When flavor is used in combination with dimensions, variant.flavorName will be a concatenation
@@ -508,7 +512,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant the given variant
      * @return the package task or null if not found
      */
-    static Task getPackageTask(Project project, ApplicationVariant variant) {
+    static Task getPackageTask(Project project, BaseVariant variant) {
         def names = [
                 "package${variant.name.capitalize()}",
                 "package${variant.name.capitalize()}Bundle"
@@ -522,7 +526,7 @@ class SentryPlugin implements Plugin<Project> {
      * @param variant the ApplicationVariant
      * @return the file or null if not found
      */
-    static File getMappingFile(ApplicationVariant variant, Project project) {
+    static File getMappingFile(BaseVariant variant, Project project) {
         try {
             def files = variant.getMappingFileProvider().get().files
             if (files.isEmpty()) {
